@@ -128,7 +128,7 @@ const YOLOWebcamDetector = () => {
 
   useEffect(() => {
     // Carga del modelo ONNX
-    ort.InferenceSession.create("static/best.onnx")
+    ort.InferenceSession.create("best.onnx")
       .then((session) => {
         sessionRef.current = session;
       })
