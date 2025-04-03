@@ -7,7 +7,6 @@ const YOLOWebcamDetector = () => {
   const sessionRef = useRef(null);
   let detecting = true;
 
-  // Funciones de procesamiento de salida y utilidades
   const yolo_classes = ["DocumentID"];
 
   const intersection = (box1, box2) => {
@@ -57,7 +56,6 @@ const YOLOWebcamDetector = () => {
       const y2 = ((yc + h / 2) / 640) * imgHeight;
       boxes.push([x1, y1, x2, y2, label, bestProb]);
     }
-    // Ordena por probabilidad
     boxes.sort((a, b) => b[5] - a[5]);
     const result = [];
     while (boxes.length > 0) {
@@ -68,19 +66,15 @@ const YOLOWebcamDetector = () => {
     return result;
   };
 
-  // Bucle de detección
   const detectionLoop = async () => {
     if (!detecting) return;
     const video = videoRef.current;
     const canvas = canvasRef.current;
     const ctx = canvas.getContext("2d");
 
-    // Actualiza tamaño del canvas según el video
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
-    //ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-    // Prepara la imagen redimensionándola a 640x640 en un canvas offscreen
     const offscreen = document.createElement("canvas");
     offscreen.width = 640;
     offscreen.height = 640;
@@ -100,15 +94,11 @@ const YOLOWebcamDetector = () => {
     const tensor = new ort.Tensor("float32", inputData, [1, 3, 640, 640]);
 
     try {
-      // Ejecuta la inferencia con el modelo cargado
       const outputMap = await sessionRef.current.run({ images: tensor });
       const outputData = outputMap["output0"].data;
       const boxes = processOutput(outputData, canvas.width, canvas.height);
 
-      // Vuelve a dibujar el frame (para limpiar cajas anteriores)
-     // ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-      // Dibuja las cajas detectadas
       boxes.forEach(([x1, y1, x2, y2, label]) => {
         ctx.strokeStyle = "#00FF00";
         ctx.lineWidth = 3;
@@ -127,28 +117,24 @@ const YOLOWebcamDetector = () => {
   };
 
   useEffect(() => {
-    // Carga del modelo ONNX
     ort.InferenceSession.create("best.onnx")
       .then((session) => {
         sessionRef.current = session;
       })
       .catch((err) => console.error("Error al cargar el modelo:", err));
 
-    // Acceso a la webcam
     navigator.mediaDevices
-      .getUserMedia({ video: true })
+      .getUserMedia({ video: { facingMode: "environment" }, })
       .then((stream) => {
         videoRef.current.srcObject = stream;
         videoRef.current.play();
       })
       .catch((err) => console.error("Error al acceder a la webcam:", err));
 
-    // Inicia el bucle cuando el video se esté reproduciendo
     videoRef.current.addEventListener("playing", () => {
       detectionLoop();
     });
 
-    // Limpieza al desmontar
     return () => {
       detecting = false;
       if (videoRef.current && videoRef.current.srcObject) {
@@ -159,13 +145,11 @@ const YOLOWebcamDetector = () => {
 
   return (
     <div position="relative">
-      {/* Video oculto para capturar la webcam */}
       <video ref={videoRef}
       style={{
         position: "absolute",
         width: "400px",
       }}>
-        {/* Canvas donde se dibuja el video y los bounding boxes */}
       </video>
       <canvas ref={canvasRef} style={{
         position: "absolute",
