@@ -3,15 +3,14 @@ import { usePrepareDetector } from "./usePrepareDetector";
 import { useDrawResult } from "./useDrawResult";
 import { useDetector } from "./useDetector";
 import { useCalculateBoxes } from "./useCalculateBoxes";
+import { useDistanceHint } from "./useDistanceHint";
 
 export const App = () => {
-
-
   const videoRef = usePrepareCamera();
   const { executionProvider, setExecutionProvider, sessionRef } =
     usePrepareDetector();
   const { boxes, processResult } = useCalculateBoxes()
-
+  const hint = useDistanceHint(boxes);
   useDetector(sessionRef, videoRef, processResult);
 
   const canvasRef = useDrawResult(boxes, videoRef);
@@ -33,6 +32,7 @@ export const App = () => {
             width: "100%",
           }}
         />
+        <span style={{ position: 'absolute', left: 5, top: 5, color: "white", background: '#00000020' }}>{hint}</span>
       </div>
       <div>
         <label>Execution Provider: </label>

@@ -1,7 +1,7 @@
 import {  useState } from "react";
 
 
-type BoxPosition = [number, number, number, number, string, number];
+export type BoxPosition = [number, number, number, number, string, number];
 
 const yolo_classes = ["DocumentID"];
 

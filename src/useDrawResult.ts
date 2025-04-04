@@ -29,16 +29,31 @@ export function useDrawResult(boxes: BoxPosition[], videoRef: RefObject<HTMLVide
             const boxWidth = realX2 - realX1;
             const boxHeight = realY2 - realY1;
 
-            ctx.strokeStyle = "#00FF00";
+            ctx.save();
+
+            // Configura el glow blanco
+            ctx.shadowColor = "#FFFFFF";
+            ctx.shadowBlur = 8;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
+
+            // Dibuja el rectángulo con borde verde
+            ctx.strokeStyle = "#ffffff60";
             ctx.lineWidth = 3;
             ctx.strokeRect(realX1, realY1, boxWidth, boxHeight);
 
-            ctx.font = "13px Roboto";
-            ctx.fillStyle = "#00FF00";
+            // Dibuja el fondo para la etiqueta
+            /*ctx.font = "13px Roboto";
             const textWidth = ctx.measureText(label).width;
+            ctx.fillStyle = "#F0F0F0";
             ctx.fillRect(realX1, realY1, textWidth + 10, 25);
+ 
+            // Escribe la etiqueta en negro
             ctx.fillStyle = "#000000";
             ctx.fillText(label, realX1, realY1 + 18);
+            */
+            // Restaura el estado del contexto (quita el glow)
+            ctx.restore();
         });
     }, [boxes]);
 
