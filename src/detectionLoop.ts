@@ -1,8 +1,12 @@
-import { Tensor } from "onnxruntime-web/webgpu";
+import { InferenceSession } from "onnxruntime-web";
+import { Tensor } from "onnxruntime-web";
+import { RefObject } from "react";
 
 const yolo_classes = ["DocumentID"];
 
-const intersection = (box1, box2) => {
+type BoxPosition = [number, number, number, number, string, number]
+
+const intersection = (box1: BoxPosition, box2: BoxPosition) => {
   const [x1, y1, x2, y2] = box1;
   const [x1b, y1b, x2b, y2b] = box2;
   const interX1 = Math.max(x1, x1b);
@@ -12,7 +16,7 @@ const intersection = (box1, box2) => {
   return Math.max(0, interX2 - interX1) * Math.max(0, interY2 - interY1);
 };
 
-const union = (box1, box2) => {
+const union = (box1: BoxPosition, box2: BoxPosition) => {
   const [x1, y1, x2, y2] = box1;
   const [x1b, y1b, x2b, y2b] = box2;
   const area1 = (x2 - x1) * (y2 - y1);
@@ -20,12 +24,12 @@ const union = (box1, box2) => {
   return area1 + area2 - intersection(box1, box2);
 };
 
-const iou = (box1, box2) => {
+const iou = (box1: BoxPosition, box2: BoxPosition) => {
   return intersection(box1, box2) / union(box1, box2);
 };
 
-const processOutput = (output, imgWidth, imgHeight) => {
-  let boxes = [];
+const processOutput = (output: any[], imgWidth: number, imgHeight: number) => {
+  let boxes: BoxPosition[] = [];
   // Se asume 8400 predicciones (como en el ejemplo)
   for (let index = 0; index < 8400; index++) {
     let bestClass = 0;
@@ -50,36 +54,50 @@ const processOutput = (output, imgWidth, imgHeight) => {
     boxes.push([x1, y1, x2, y2, label, bestProb]);
   }
   boxes.sort((a, b) => b[5] - a[5]);
-  const result = [];
+  const result: BoxPosition[] = [];
   while (boxes.length > 0) {
     const box = boxes.shift();
-    result.push(box);
-    boxes = boxes.filter((b) => iou(box, b) < 0.7);
+    if (box) {
+      result.push(box);
+      boxes = boxes.filter((b) => iou(box, b) < 0.7);
+    }
   }
   return result;
 };
 
 let lastDetectionTime = Date.now();
 
-export const detectionLoop = async ({ sessionRef, videoRef, canvasRef }) => {
-  if (Date.now() - lastDetectionTime < 200) {
-    setTimeout(() => detectionLoop({ sessionRef, videoRef, canvasRef }), 50);
-    return;
+type Props = {
+  sessionRef: RefObject<InferenceSession | null>
+  videoRef: RefObject<HTMLVideoElement | null>
+  canvasRef: RefObject<HTMLCanvasElement | null>
+}
+
+export const detectionLoop = async ({ sessionRef, videoRef, canvasRef }: Props) => {
+  
+  const retry = (timeout = 1000) => {
+    setTimeout(() => detectionLoop({ sessionRef, videoRef, canvasRef }), timeout);
   }
+
+  if (Date.now() - lastDetectionTime < 100) {
+    return retry(50)
+  }
+
   lastDetectionTime = Date.now();
   const session = sessionRef.current;
   const video = videoRef.current;
+  const canvas = canvasRef.current;
 
-  if (!session || !video || !video.videoWidth || !video.videoHeight) {
-    setTimeout(() => {
-      detectionLoop({ sessionRef, videoRef, canvasRef });
-    }, 1000);
-    return
+  if (!session || !video || !canvas || !video.videoWidth || !video.videoHeight) {
+    return retry()
   }
-  try {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
 
+  try {
+    const ctx = canvas.getContext("2d");
+    if (!ctx) {
+      console.error("no ctx");
+      return retry()
+    }
     canvas.width = video.videoWidth;
     canvas.height = video.videoHeight;
 
@@ -87,6 +105,12 @@ export const detectionLoop = async ({ sessionRef, videoRef, canvasRef }) => {
     offscreen.width = 640;
     offscreen.height = 640;
     const offCtx = offscreen.getContext("2d");
+    if (!offCtx) {
+      console.error("no offCtx");
+      return retry()
+    }
+
+
     offCtx.drawImage(video, 0, 0, 640, 640);
     const imgData = offCtx.getImageData(0, 0, 640, 640);
     const pixels = imgData.data;
@@ -103,7 +127,7 @@ export const detectionLoop = async ({ sessionRef, videoRef, canvasRef }) => {
 
     const outputMap = await session.run({ images: tensor });
     const outputData = outputMap["output0"].data;
-    const boxes = processOutput(outputData, canvas.width, canvas.height);
+    const boxes = processOutput(outputData, canvas.width, canvas.height) as BoxPosition[];
 
     boxes.forEach(([x1, y1, x2, y2, label]) => {
       ctx.strokeStyle = "#00FF00";
@@ -118,12 +142,7 @@ export const detectionLoop = async ({ sessionRef, videoRef, canvasRef }) => {
     });
   } catch (err) {
     console.error("Error al ejecutar el modelo:", err);
-    setTimeout(() => {
-      detectionLoop({ sessionRef, videoRef, canvasRef });
-    }, 2000);
-    return;
+    return retry()
   }
-  requestAnimationFrame(() =>
-    detectionLoop({ sessionRef, videoRef, canvasRef })
-  );
+  return retry(50)
 };

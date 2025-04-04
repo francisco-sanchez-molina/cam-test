@@ -1,10 +1,9 @@
-import React, { useRef, useEffect } from "react";
+import { useRef, useEffect } from "react";
 
 export const usePrepareCamera = () => {
-  const videoRef = useRef(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    // Iniciamos webcam
     navigator.mediaDevices
       .getUserMedia({ video: { facingMode: "environment" } })
       .then((stream) => {
@@ -13,15 +12,16 @@ export const usePrepareCamera = () => {
           videoRef.current.play();
         }
       })
-      .catch((err) => console.error("Error al acceder a la webcam:", err));
+      .catch((err) => console.error("webcam error:", err));
 
 
     return () => {
       if (videoRef.current && videoRef.current.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+        const srcObject = videoRef.current.srcObject as any
+        srcObject.getTracks().forEach((track: any) => track.stop());
       }
     };
- 
+
   }, []);
 
   return videoRef;

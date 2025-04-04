@@ -1,9 +1,9 @@
 import { useRef, useEffect, useState } from "react";
-import { InferenceSession } from "onnxruntime-web/webgpu";
+import { InferenceSession } from "onnxruntime-web";
 
 export const usePrepareDetector = () => {
   const [executionProvider, setExecutionProvider] = useState("webgpu");
-  const sessionRef = useRef();
+  const sessionRef = useRef<InferenceSession>(null);
   useEffect(() => {
     let mounted = true;
     const providers =
@@ -18,7 +18,7 @@ export const usePrepareDetector = () => {
             sessionRef.current = session;
           }
         })
-        .catch((err) => {
+        .catch((err: unknown) => {
           console.error("Error al cargar el modelo:", err);
           setTimeout(() => {
             mount();
